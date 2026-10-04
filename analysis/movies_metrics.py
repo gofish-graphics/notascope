@@ -16,6 +16,10 @@ Definitions (paper Sec. 4):
   token usage    Fig. 5: for each unique token, the number of specs it appears in; we report
                  the share of vocabulary used in exactly one spec and in every spec.
 
+Chart-expression view (not in the paper): the same tokens.pqt tokens with the boilerplate that
+every spec of a notation repeats removed, so each notation is measured on the bare chart
+expression. See EXPR_RULE below for the exact rule.
+
 Bootstrap: 1,000 resamples (seed 42) of specs with replacement. Within a resample, sprawl is
 the median over pairs of draws that are different specs (a spec is not paired with itself or
 its own duplicate draw). Note: NotaScope's notebooks/bootstrap.ipynb instead takes the median
@@ -61,6 +65,128 @@ PAPER = {
 }
 
 
+# Variable each notation's saver (notations/savers/<n>.sh) reads the finished chart from.
+# A top-level `<var> =` binding of it is boilerplate, like GoFish's `export default`.
+RESULT_VAR = {
+    "altair": "chart",
+    "bokeh": "p",
+    "matplotlib": "ax",
+    "pandas": "ax",
+    "plotly_express": "fig",
+    "plotly_go": "fig",
+    "seaborn": "ax",
+    "seaborn_obj": "p",
+}
+DATA_FILE = '"data/movies.csv"'
+EXPR_RULE = (
+    "Chart-expression tokens are the tokens.pqt tokens of a spec minus: (1) import statements "
+    "(Python `import`/`from`, JS `import`) and R `library(...)` calls; (2) the whole top-level "
+    "statement that contains the token `\"data/movies.csv\"` (the data load); (3) the result "
+    "binding: GoFish `export default`, and in Python the `<var> =` prefix of any top-level "
+    "statement whose sole target is the variable the notation's saver reads (altair `chart`, "
+    "bokeh `p`, matplotlib/pandas/seaborn `ax`, plotly `fig`, seaborn_obj `p`; a tuple target such "
+    "as `fig, ax = plt.subplots()` is kept); (4) in Vega-Lite and Flint JSON, the top-level "
+    "`\"$schema\"` and `\"data\"` members with their separating comma. Top-level statements are "
+    "found from the preprocessed source: column-0 lines for Python and R, top-level `;` for the "
+    "minified JS. Everything else stays, including helper functions and data-wrangling statements "
+    "outside the load statement. Caveat: in the few specs whose load statement also wrangles "
+    "(`df2 = pd.read_csv(...).groupby(...)`, `read_csv(...) |> group_by(...)`), that wrangling "
+    "is dropped with the load."
+)
+
+
+def _offsets(src, toks):
+    """Character offset of each token in the preprocessed source (tokens are tree-sitter
+    leaves in source order, separated only by whitespace)."""
+    out, pos = [], 0
+    for t in toks:
+        i = src.find(t, pos)
+        if i < 0:
+            raise ValueError(f"token {t!r} not found in source after offset {pos}")
+        out.append(i)
+        pos = i + len(t)
+    return out
+
+
+def _line_statements(src, toks):
+    """Group token indices into top-level statements: a statement starts on a line whose
+    first character is not whitespace or a closing bracket (Python/R preprocessed source)."""
+    starts = [0]
+    for i, ch in enumerate(src):
+        if ch == "\n":
+            starts.append(i + 1)
+    stmt_of_line, k = [], -1
+    for st in starts:
+        c = src[st:st + 1]
+        if c and not c.isspace() and c not in ")]}":
+            k += 1
+        stmt_of_line.append(k)
+    import bisect
+    groups = {}
+    for ti, off in enumerate(_offsets(src, toks)):
+        groups.setdefault(stmt_of_line[bisect.bisect_right(starts, off) - 1], []).append(ti)
+    return list(groups.values())
+
+
+def _semicolon_statements(toks):
+    """Split JS tokens into top-level statements at `;` outside brackets."""
+    groups, cur, depth = [], [], 0
+    for i, t in enumerate(toks):
+        cur.append(i)
+        depth += t in "([{" and len(t) == 1
+        depth -= t in ")]}" and len(t) == 1
+        if t == ";" and depth == 0:
+            groups.append(cur)
+            cur = []
+    return groups + ([cur] if cur else [])
+
+
+def _json_expr(toks):
+    """Drop the top-level "$schema" and "data" members (key, value, one comma)."""
+    keep, depth, i = [], 0, 0
+    while i < len(toks):
+        t = toks[i]
+        if depth == 1 and t in ('"$schema"', '"data"') and i + 1 < len(toks) and toks[i + 1] == ":":
+            j, d = i + 2, 0
+            while True:  # skip the value
+                d += toks[j] in ("{", "[")
+                d -= toks[j] in ("}", "]")
+                j += 1
+                if d == 0:
+                    break
+            if j < len(toks) and toks[j] == ",":
+                j += 1
+            elif keep and keep[-1] == ",":
+                keep.pop()
+            i = j
+            continue
+        depth += t in ("{", "[")
+        depth -= t in ("}", "]")
+        keep.append(t)
+        i += 1
+    return keep
+
+
+def expr_tokens(notation, path, toks):
+    ext = path.suffix
+    if ext in (".vl", ".json"):
+        return _json_expr(toks)
+    src = path.read_text()
+    groups = _semicolon_statements(toks) if ext in (".mjs", ".js") else _line_statements(src, toks)
+    var = RESULT_VAR.get(notation)
+    keep = []
+    for g in groups:
+        st = [toks[i] for i in g]
+        if st[0] in ("import", "from") or st[:2] == ["library", "("] or DATA_FILE in st:
+            continue
+        if st[:2] == ["export", "default"]:
+            st = st[2:]
+        elif var and ext == ".py" and st[:2] == [var, "="]:
+            st = st[2:]
+        keep += st
+    return keep
+
+
 def load(notations=None, exclude=()):
     data = {}
     for d in sorted(p for p in RESULTS.iterdir() if p.is_dir()):
@@ -89,6 +215,11 @@ def load(notations=None, exclude=()):
         spec_tokens = {s: set(g.token) for s, g in tok.groupby("spec")}
         for s in specs:  # a spec with no tokens still counts as a spec
             spec_tokens.setdefault(s, set())
+        paths = {".".join(p.name.split(".")[:-1]): p for p in (d / "preproc").glob("*.*")}
+        n_tokens, expr = {}, {}
+        for s, g in tok.groupby("spec", sort=False):
+            n_tokens[s] = len(g)
+            expr[s] = expr_tokens(n, paths[s], list(g.token))
         data[n] = dict(
             specs=specs,
             idx=idx,
@@ -96,6 +227,8 @@ def load(notations=None, exclude=()):
             cd=mats["cd"],
             ncd=mats["ncd"],
             tokens=spec_tokens,
+            n_tokens=np.array([n_tokens.get(s, 0) for s in specs], dtype=float),
+            expr=[expr.get(s, []) for s in specs],
         )
     return data
 
@@ -130,6 +263,25 @@ def point_metrics(nd, specs):
         share_once=float((counts == 1).sum() / vocab),
         share_all=float((counts == len(specs)).sum() / vocab),
     )
+
+
+def expr_metrics(data, chart_sets, variant):
+    rows = []
+    for n, nd in data.items():
+        specs = chart_sets if isinstance(chart_sets, list) else chart_sets[n]
+        ix = [nd["idx"][s] for s in specs]
+        counts = pd.Series(
+            [t for i in ix for t in set(nd["expr"][i])], dtype=object
+        ).value_counts()
+        rows.append(dict(
+            variant=variant, notation=n, n_specs=len(specs),
+            median_tokens=float(np.median(nd["n_tokens"][ix])),
+            median_expr_tokens=float(np.median([len(nd["expr"][i]) for i in ix])),
+            expr_vocab=len(counts),
+            expr_once=int((counts == 1).sum()),
+            expr_share_once=float((counts == 1).sum() / len(counts)),
+        ))
+    return pd.DataFrame(rows)
 
 
 def boot_one(nd, sample):
@@ -263,7 +415,7 @@ def fmt_ci(r, key, nd=0):
     return f"{f.format(getattr(r, key))} [{f.format(getattr(r, key + '_lo'))}, {f.format(getattr(r, key + '_hi'))}]"
 
 
-def markdown(all_df, paired_df, common, n_boot):
+def markdown(all_df, paired_df, common, n_boot, expr_frames=()):
     lines = [
         "# Movies gallery metrics",
         "",
@@ -282,6 +434,15 @@ def markdown(all_df, paired_df, common, n_boot):
                 f"| {r.notation} | {r.n_specs} | {fmt_ci(r, 'median_length')} | {r.vocab} "
                 f"(boot {r.vocab_lo:.0f}-{r.vocab_hi:.0f}) | {fmt_ci(r, 'sprawl_cd', 1)} | {r.sprawl_ncd:.0f} | "
                 f"{r.tokens_once} ({r.share_once:.0%}) | {r.tokens_all} ({r.share_all:.0%}) |")
+        lines.append("")
+    for title, df in expr_frames:
+        lines += [f"## Chart expression only: {title}", "", EXPR_RULE, "",
+                  "Token counts count every token occurrence; vocabulary counts unique tokens.", "",
+                  "| notation | specs | median tokens (all) | median tokens (chart expression) | chart-expression vocabulary | used in 1 spec |",
+                  "|---|---:|---:|---:|---:|---:|"]
+        for r in df.itertuples():
+            lines.append(f"| {r.notation} | {r.n_specs} | {r.median_tokens:.0f} | {r.median_expr_tokens:.0f} | "
+                         f"{r.expr_vocab} | {r.expr_once} ({r.expr_share_once:.0%}) |")
         lines.append("")
     lines += ["## Paper reference values (9 notations)", "",
               "Vocabulary and tokens used once / in all 40 specs are read from Fig. 5. Length and sprawl are "
@@ -327,7 +488,12 @@ def main():
         paired_df = summarize(data, common, boot_p, "paired")
         frames.append(paired_df)
     pd.concat(frames).to_csv(OUT / "movies_metrics.csv", index=False, float_format="%.4g")
-    (OUT / "movies_metrics.md").write_text(markdown(all_df, paired_df, common, args.n_boot))
+    expr_frames = [("all specs per notation", expr_metrics(data, own, "all"))]
+    if len(common) >= 2:
+        expr_frames.append((f"paired, {len(common)} charts", expr_metrics(data, common, "paired")))
+    pd.concat(f for _, f in expr_frames).to_csv(OUT / "movies_expr_metrics.csv", index=False,
+                                                float_format="%.4g")
+    (OUT / "movies_metrics.md").write_text(markdown(all_df, paired_df, common, args.n_boot, expr_frames))
 
     plot(all_df, boot_all, ("median_length", "length"), ("vocab", "vocab"),
          "Median specification length (bytes)", "Vocabulary size (unique tokens)",
@@ -341,7 +507,9 @@ def main():
     with pd.option_context("display.width", 200, "display.max_columns", 30):
         print(all_df[["notation", "n_specs", "median_length", "vocab", "sprawl_cd", "sprawl_ncd",
                       "share_once", "share_all"]].round(3).to_string(index=False))
-    print(f"[metrics] wrote {OUT}/movies_metrics.{{csv,md}} and plots")
+    with pd.option_context("display.width", 200, "display.max_columns", 30):
+        print(expr_frames[0][1].drop(columns="variant").round(3).to_string(index=False))
+    print(f"[metrics] wrote {OUT}/movies_metrics.{{csv,md}}, movies_expr_metrics.csv and plots")
 
 
 if __name__ == "__main__":

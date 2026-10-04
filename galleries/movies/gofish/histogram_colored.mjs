@@ -1,12 +1,11 @@
 import * as d3 from "d3";
-import * as gf from "gofish-graphics";
+import { chart, field, rect, spread, stack } from "gofish-graphics";
 
 const movies = await d3.csv("data/movies.csv", d3.autoType);
 
-export const chart = gf
-  .chart(movies, { axes: true })
+export default chart(movies, { axes: true })
   .flow(
-    gf.spread({ by: gf.field("Production Budget").bin(), dir: "x" }),
-    gf.stack({ by: "MPAA Rating", dir: "y" })
+    spread({ by: field("Production Budget").bin(), dir: "x" }),
+    stack({ by: "MPAA Rating", dir: "y" })
   )
-  .mark(gf.rect({ h: gf.field("Title").count(), fill: "MPAA Rating" }));
+  .mark(rect({ h: field("Title").count(), fill: "MPAA Rating" }));

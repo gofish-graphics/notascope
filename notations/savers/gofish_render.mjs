@@ -1,5 +1,5 @@
 // Render a GoFish spec to PNG. A spec is an ES module (top-level await allowed)
-// that exports `chart`, an unrendered GoFish builder; this saver supplies the
+// whose default export is an unrendered GoFish builder; this saver supplies the
 // container and the 400x400 size, as the Altair saver does.
 //
 // usage: node notations/savers/gofish_render.mjs <spec.mjs> <out.png>
@@ -29,7 +29,7 @@ const specDir = path.dirname(specPath);
 
 const bundle = await esbuild.build({
   stdin: {
-    contents: `import { chart } from ${JSON.stringify(specPath)};
+    contents: `import chart from ${JSON.stringify(specPath)};
 const root = document.createElement("div");
 await chart.render(root, { w: 400, h: 400 });
 window.__chart = root;`,

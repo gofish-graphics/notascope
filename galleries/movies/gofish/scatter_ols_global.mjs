@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import * as gf from "gofish-graphics";
+import { chart, circle, layer, line, scatter } from "gofish-graphics";
 
 const movies = await d3.csv("data/movies.csv", d3.autoType);
 
@@ -21,21 +21,19 @@ const ols = (rows) => {
   }));
 };
 
-export const chart = gf.chart(movies, { axes: true }).mark(
-  gf.layer([
-    gf
-      .chart(movies)
-      .flow(gf.scatter({ x: "Production Budget", y: "Worldwide Gross" }))
-      .mark(gf.circle({ r: 3, fill: "MPAA Rating" })),
-    gf
-      .chart(ols(movies))
+export default chart(movies, { axes: true }).mark(
+  layer([
+    chart(movies)
+      .flow(scatter({ x: "Production Budget", y: "Worldwide Gross" }))
+      .mark(circle({ r: 3, fill: "MPAA Rating" })),
+    chart(ols(movies))
       .flow(
-        gf.scatter({
+        scatter({
           by: "Production Budget",
           x: "Production Budget",
           y: "Worldwide Gross",
         })
       )
-      .mark(gf.line()),
+      .mark(line()),
   ])
 );

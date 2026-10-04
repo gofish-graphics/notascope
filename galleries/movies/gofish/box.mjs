@@ -1,5 +1,15 @@
 import * as d3 from "d3";
-import * as gf from "gofish-graphics";
+import {
+  Constraint,
+  chart,
+  circle,
+  derive,
+  field,
+  layer,
+  rect,
+  scatter,
+  spread,
+} from "gofish-graphics";
 
 const movies = await d3.csv("data/movies.csv", d3.autoType);
 
@@ -28,49 +38,39 @@ const outliers = (rows) => {
   return rows.filter((r) => y(r) < min || y(r) > max);
 };
 
-export const chart = gf
-  .chart(movies, { axes: true })
-  .flow(gf.spread({ by: "Major Genre", dir: "x" }))
+export default chart(movies, { axes: true })
+  .flow(spread({ by: "Major Genre", dir: "x" }))
   .mark(
-    gf
-      .layer([
-        gf
-          .chart()
-          .flow(
-            gf.derive(box),
-            gf.scatter({
-              yMin: gf.field("min", "Production Budget"),
-              yMax: gf.field("max", "Production Budget"),
-            })
-          )
-          .mark(gf.rect({ w: 1 }))
-          .name("whisker"),
-        gf
-          .chart()
-          .flow(
-            gf.derive(box),
-            gf.scatter({
-              yMin: gf.field("q1", "Production Budget"),
-              yMax: gf.field("q3", "Production Budget"),
-            })
-          )
-          .mark(gf.rect({ w: 14 }))
-          .name("box"),
-        gf
-          .chart()
-          .flow(
-            gf.derive(box),
-            gf.scatter({ y: gf.field("median", "Production Budget") })
-          )
-          .mark(gf.rect({ w: 14, h: 1, fill: "white" }))
-          .name("median"),
-        gf
-          .chart()
-          .flow(gf.derive(outliers), gf.scatter({ y: "Production Budget" }))
-          .mark(gf.circle({ r: 2 }))
-          .name("outliers"),
-      ])
-      .relate(({ whisker, box, median, outliers }) => [
-        gf.Constraint.align({ x: "middle" }, [whisker, box, median, outliers]),
-      ])
+    layer([
+      chart()
+        .flow(
+          derive(box),
+          scatter({
+            yMin: field("min", "Production Budget"),
+            yMax: field("max", "Production Budget"),
+          })
+        )
+        .mark(rect({ w: 1 }))
+        .name("whisker"),
+      chart()
+        .flow(
+          derive(box),
+          scatter({
+            yMin: field("q1", "Production Budget"),
+            yMax: field("q3", "Production Budget"),
+          })
+        )
+        .mark(rect({ w: 14 }))
+        .name("box"),
+      chart()
+        .flow(derive(box), scatter({ y: field("median", "Production Budget") }))
+        .mark(rect({ w: 14, h: 1, fill: "white" }))
+        .name("median"),
+      chart()
+        .flow(derive(outliers), scatter({ y: "Production Budget" }))
+        .mark(circle({ r: 2 }))
+        .name("outliers"),
+    ]).relate(({ whisker, box, median, outliers }) => [
+      Constraint.align({ x: "middle" }, [whisker, box, median, outliers]),
+    ])
   );

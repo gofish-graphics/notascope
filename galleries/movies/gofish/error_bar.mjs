@@ -1,5 +1,15 @@
 import * as d3 from "d3";
-import * as gf from "gofish-graphics";
+import {
+  Constraint,
+  chart,
+  circle,
+  derive,
+  field,
+  layer,
+  rect,
+  scatter,
+  spread,
+} from "gofish-graphics";
 
 const movies = await d3.csv("data/movies.csv", d3.autoType);
 
@@ -12,31 +22,26 @@ const stderr = (rows) => {
   ];
 };
 
-export const chart = gf
-  .chart(movies, { axes: true })
-  .flow(gf.spread({ by: "Major Genre", dir: "y" }))
+export default chart(movies, { axes: true })
+  .flow(spread({ by: "Major Genre", dir: "y" }))
   .mark(
-    gf
-      .layer([
-        gf
-          .chart()
-          .flow(gf.scatter({ by: "Major Genre", x: "Production Budget" }))
-          .mark(gf.circle({ r: 3 }))
-          .name("point"),
-        gf
-          .chart()
-          .flow(
-            gf.derive(stderr),
-            gf.scatter({
-              by: "Major Genre",
-              xMin: gf.field("lo", "Production Budget"),
-              xMax: gf.field("hi", "Production Budget"),
-            })
-          )
-          .mark(gf.rect({ h: 1 }))
-          .name("bar"),
-      ])
-      .relate(({ point, bar }) => [
-        gf.Constraint.align({ y: "middle" }, [point, bar]),
-      ])
+    layer([
+      chart()
+        .flow(scatter({ by: "Major Genre", x: "Production Budget" }))
+        .mark(circle({ r: 3 }))
+        .name("point"),
+      chart()
+        .flow(
+          derive(stderr),
+          scatter({
+            by: "Major Genre",
+            xMin: field("lo", "Production Budget"),
+            xMax: field("hi", "Production Budget"),
+          })
+        )
+        .mark(rect({ h: 1 }))
+        .name("bar"),
+    ]).relate(({ point, bar }) => [
+      Constraint.align({ y: "middle" }, [point, bar]),
+    ])
   );

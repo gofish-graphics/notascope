@@ -1,19 +1,18 @@
 import * as d3 from "d3";
-import * as gf from "gofish-graphics";
+import { chart, circle, derive, field, line, scatter } from "gofish-graphics";
 
 const movies = await d3.csv("data/movies.csv", d3.autoType);
 
-export const chart = gf
-  .chart(movies, { axes: true })
+export default chart(movies, { axes: true })
   .flow(
-    gf.derive((d) =>
+    derive((d) =>
       d.map((r) => ({ ...r, Year: r["Release Date"].getUTCFullYear() }))
     ),
-    gf.scatter({
-      by: gf.field("Year").sort(),
-      x: gf.field("Production Budget").sum(),
-      y: gf.field("Worldwide Gross").sum(),
+    scatter({
+      by: field("Year").sort(),
+      x: field("Production Budget").sum(),
+      y: field("Worldwide Gross").sum(),
     })
   )
-  .mark(gf.circle({ r: 3 }))
-  .layer(gf.chart().mark(gf.line()));
+  .mark(circle({ r: 3 }))
+  .layer(chart().mark(line()));

@@ -1,19 +1,18 @@
 import * as d3 from "d3";
-import * as gf from "gofish-graphics";
+import { chart, derive, field, group, line, scatter } from "gofish-graphics";
 
 const movies = await d3.csv("data/movies.csv", d3.autoType);
 
-export const chart = gf
-  .chart(movies, { axes: true })
+export default chart(movies, { axes: true })
   .flow(
-    gf.derive((d) =>
+    derive((d) =>
       d.map((r) => ({ ...r, Year: r["Release Date"].getUTCFullYear() }))
     ),
-    gf.group({ by: gf.field("MPAA Rating").dropNulls() }),
-    gf.scatter({
-      by: gf.field("Year").sort(),
+    group({ by: field("MPAA Rating").dropNulls() }),
+    scatter({
+      by: field("Year").sort(),
       x: "Year",
-      y: gf.field("Worldwide Gross").sum(),
+      y: field("Worldwide Gross").sum(),
     })
   )
-  .mark(gf.line({ stroke: "MPAA Rating" }));
+  .mark(line({ stroke: "MPAA Rating" }));

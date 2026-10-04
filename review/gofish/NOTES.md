@@ -1,7 +1,7 @@
 # GoFish movies gallery: review notes
 
 GoFish main at 4e271a1fb (dist from `/Users/jmp/gofish-20250316/.claude/worktrees/notascope-main`).
-Every spec is an ES module that loads `data/movies.csv` with a top-level `await d3.csv(..., d3.autoType)` and exports the unrendered v3 builder as `export const chart = gf.chart(...).flow(...).mark(...)`. The saver (`notations/savers/gofish_render.mjs`) creates the container and calls `chart.render(root, { w: 400, h: 400 })`, as the Altair saver sets the size. The faceted specs used to render at 800x500 and now get the same 400x400 as the rest.
+Every spec is an ES module that loads `data/movies.csv` with a top-level `await d3.csv(..., d3.autoType)` and default-exports the unrendered v3 builder as `export default chart(...).flow(...).mark(...)`, with GoFish names imported by name (`import { chart, rect, spread } from "gofish-graphics"`). The saver (`notations/savers/gofish_render.mjs`) creates the container and calls `chart.render(root, { w: 400, h: 400 })`, as the Altair saver sets the size. The faceted specs used to render at 800x500 and now get the same 400x400 as the rest.
 Renders: `review/gofish/<name>.png`, compared against `reference/movies/<name>.png`.
 
 Some notes apply to every chart, so the table does not repeat them:
@@ -47,7 +47,7 @@ Some notes apply to every chart, so the table does not repeat them:
 | scatter_colored_continuous | ok | needs explicit `color: gradient("blues")` (a numeric field is otherwise categorical); null ratings render black |
 | scatter_colored_symbol | approx | there is no shape channel, so `Major Genre` is not encoded; color only |
 | scatter_connected | ok | layered `circle` + `.layer(chart().mark(line()))`; curve is monotone |
-| scatter_ols_global | ok | `layer([...])` of points + OLS line, wrapped as `gf.chart(movies, {axes: true}).mark(gf.layer([...]))`, because `layer({axes: true})` draws no axes |
+| scatter_ols_global | ok | `layer([...])` of points + OLS line, wrapped as `chart(movies, {axes: true}).mark(layer([...]))`, because `layer({axes: true})` draws no axes |
 | scatter_ols_separate | ok | as above, with per-rating OLS |
 | slope | ok | `spread` + `scatter({by, y})` + `line`; needs explicit `spacing: 30` or the x extent collapses to ~0; null rating dropped |
 | stripes | approx | `Year` derived; ordinal `spread` (no gaps for missing years); sum through a mark callback `fill: v(d3.sum(...))`; `rect({h: 400})` |
