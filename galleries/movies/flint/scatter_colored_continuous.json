@@ -1,0 +1,24 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "Production Budget": "Amount",
+    "Worldwide Gross": "Amount",
+    "IMDB Rating": "Score"
+  },
+  "chart_spec": {
+    "chartType": "Scatter Plot",
+    "encodings": {
+      "x": {
+        "field": "Production Budget"
+      },
+      "y": {
+        "field": "Worldwide Gross"
+      },
+      "color": {
+        "field": "IMDB Rating"
+      }
+    }
+  }
+}

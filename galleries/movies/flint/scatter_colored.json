@@ -1,0 +1,24 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "MPAA Rating": "Category",
+    "Production Budget": "Amount",
+    "Worldwide Gross": "Amount"
+  },
+  "chart_spec": {
+    "chartType": "Scatter Plot",
+    "encodings": {
+      "x": {
+        "field": "Production Budget"
+      },
+      "y": {
+        "field": "Worldwide Gross"
+      },
+      "color": {
+        "field": "MPAA Rating"
+      }
+    }
+  }
+}

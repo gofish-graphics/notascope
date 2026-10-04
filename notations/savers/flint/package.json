@@ -1,0 +1,9 @@
+{
+  "name": "notascope-flint-saver",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "flint-chart": "0.5.1",
+    "flint-chart-mcp": "0.5.1"
+  }
+}

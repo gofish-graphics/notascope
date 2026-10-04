@@ -1,0 +1,21 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "Major Genre": "Category"
+  },
+  "chart_spec": {
+    "chartType": "Bar Chart",
+    "encodings": {
+      "x": {
+        "field": "Major Genre",
+        "sortBy": "y",
+        "sortOrder": "descending"
+      },
+      "y": {
+        "aggregate": "count"
+      }
+    }
+  }
+}

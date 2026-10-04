@@ -1,0 +1,19 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "Major Genre": "Category"
+  },
+  "chart_spec": {
+    "chartType": "Scatter Plot",
+    "encodings": {
+      "y": {
+        "field": "Major Genre"
+      },
+      "x": {
+        "aggregate": "count"
+      }
+    }
+  }
+}

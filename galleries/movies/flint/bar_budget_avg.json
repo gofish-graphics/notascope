@@ -1,0 +1,21 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "Major Genre": "Category",
+    "Production Budget": "Amount"
+  },
+  "chart_spec": {
+    "chartType": "Bar Chart",
+    "encodings": {
+      "x": {
+        "field": "Major Genre"
+      },
+      "y": {
+        "field": "Production Budget",
+        "aggregate": "mean"
+      }
+    }
+  }
+}

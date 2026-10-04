@@ -1,0 +1,23 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "Major Genre": "Category",
+    "MPAA Rating": "Category"
+  },
+  "chart_spec": {
+    "chartType": "Heatmap",
+    "encodings": {
+      "x": {
+        "field": "Major Genre"
+      },
+      "y": {
+        "field": "MPAA Rating"
+      },
+      "color": {
+        "aggregate": "count"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "Production Budget": "Amount"
+  },
+  "chart_spec": {
+    "chartType": "Histogram",
+    "encodings": {
+      "x": {
+        "field": "Production Budget"
+      }
+    }
+  }
+}

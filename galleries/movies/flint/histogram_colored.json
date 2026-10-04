@@ -1,0 +1,20 @@
+{
+  "data": {
+    "url": "data/movies.csv"
+  },
+  "semantic_types": {
+    "MPAA Rating": "Category",
+    "Production Budget": "Amount"
+  },
+  "chart_spec": {
+    "chartType": "Histogram",
+    "encodings": {
+      "x": {
+        "field": "Production Budget"
+      },
+      "color": {
+        "field": "MPAA Rating"
+      }
+    }
+  }
+}

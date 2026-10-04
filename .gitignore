@@ -11,3 +11,6 @@ build
 tree_sitter_languages/build/languages.so
 notebooks/figs
 .yarn
+.venv/
+.venv-ts/
+__pycache__/
