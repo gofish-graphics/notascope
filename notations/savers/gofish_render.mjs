@@ -18,10 +18,13 @@ import { chromium } from "playwright";
 const [, , input, output] = process.argv;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "../..");
-const gofishDir = path.resolve(
-  process.env.GOFISH_DIR ??
-    "/Users/jmp/gofish-20250316/.claude/worktrees/notascope-main"
-);
+if (!process.env.GOFISH_DIR) {
+  console.error(
+    "Set GOFISH_DIR to a gofish-graphics checkout with a built dist (pnpm --filter gofish-graphics build)."
+  );
+  process.exit(1);
+}
+const gofishDir = path.resolve(process.env.GOFISH_DIR);
 const gofishDist = path.join(gofishDir, "packages/gofish-graphics/dist/index.js");
 
 const specPath = path.resolve(input);
